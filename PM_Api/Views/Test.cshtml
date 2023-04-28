@@ -1,0 +1,355 @@
+﻿@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title></title>
+    <script src="https://cdn.staticfile.org/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://cdn.bootcss.com/blueimp-md5/2.10.0/js/md5.js"></script>
+    <link href="https://cdn.staticfile.org/twitter-bootstrap/5.1.1/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.staticfile.org/twitter-bootstrap/5.1.1/js/bootstrap.bundle.min.js"></script>
+    <style>
+        .popup-container {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
+    <script>
+
+        $(function () {
+            $("#Data").text('{ "selectA1": [{ "Name": "156324" }], "selectA2": [{ "IdA": "11", "IdB": "12" }, { "IdA": "13", "IdB": "14" }] }')
+        });
+
+        var url = 'https://localhost:44321';
+        var data = '';
+        function LogOut() {
+            location.href = '/Views/Login.cshtml';
+        }
+
+        function QueryDate() {
+
+            var action = $("#Action").val();
+            var parm = $("#Data").val();
+            var timeStamp = (new Date()).valueOf();
+            var nonce = RandomNumber();
+            var userId = localStorage.getItem("LoginUserId");
+            var token = localStorage.getItem("SignToken");
+
+            $.ajax({
+                type: 'Post',
+                url: url + action,
+                data: JSON.stringify($("#Data").val()),
+                headers: {
+                    "timespan": timeStamp,//时间戳
+                    "nonce": nonce,//随机数
+                    "userId": userId,//用户Id
+                    "token": token,//token
+                    "signature": GetSignature(timeStamp, nonce, userId, token, parm)//签名参数
+                },
+                contentType: 'application/json',
+                dataType: 'json',
+                success: function (data) {
+                    console.log("success");
+                    console.log(data);
+                    var result = JSON.stringify(data, null, 4);
+                    $("#show_json").html("<pre>" + result + "</pre>");
+                },
+                error: function (data) {
+                    console.log("error");
+                    console.log(data);
+                }
+            });
+        }
+
+        function ExportExcel() {
+            var action = $("#Action2").val();
+            var parm = $("#Data2").val();
+            window.location.href = "https://localhost:44321" + action + "?JsonParm=" + parm + "";
+        }
+
+        function ImportExcel() {
+            var formData = new FormData();
+            formData.append("TableName", "Test");
+            if ($("#ImportExcel")[0].files.length > 0) {
+                formData.append("ImportExcel", $("#ImportExcel")[0].files[0]);
+            }
+            $.ajax({
+                method: "POST",
+                url: url + "/api/Server/ImportExcel",
+                data: formData,
+                dataType: "json",
+                contentType: false, //传文件必须！
+                processData: false, //传文件必须！
+                success: function (data) {
+                    console.log("success");
+                    console.log(data);
+                    var result = JSON.stringify(data, null, 4);
+                    $("#show_json").html("<pre>" + result + "</pre>");
+                }
+            });
+        }
+
+        function QRcode() {
+            $.ajax({
+                type: 'Post',
+                url: url + '/api/Server/QRcode',
+                data: JSON.stringify($("#QRcode").val()),
+                contentType: 'application/json',
+                dataType: 'json',
+                success: function (data) {
+                    console.log("success");
+                    console.log(data);
+                    $("#QRcodeimg").attr("src", "data:image/jpeg;base64," + data.data + "");
+                    var result = JSON.stringify(data, null, 4);
+                    $("#show_json").html("<pre>" + result + "</pre>");
+                },
+                error: function (data) {
+                    console.log("error");
+                    console.log(data);
+                }
+            });
+        }
+
+        //生成验证码
+        function VerificationCode() {
+            /*   var _json = {};*/
+
+            $.ajax({
+                type: 'Post',
+                url: '/api/Server/VerificationCode',
+                dataType: "json",
+                contentType: "application/json",
+                /*  data: JSON.stringify(_json),*/
+                success: function (data) {
+                    console.log(data);
+                    console.log(data.Data.Base64jpg);
+                    var result = JSON.stringify(data, null, 4);
+                    $("#show_json").html("<pre>" + result + "</pre>");
+                    //$("#img").src = "data:image/png;base64," + data.data.Base64jpg;
+                    $("#Code").attr("src", "data:image/png;base64," + data.Data.Base64jpg);
+                },
+                error: function (data) {
+                    console.log(data);
+                }
+            });
+        }
+
+        function LogInfo() {
+            window.location.href = "/Views/log.cshtml";
+        }
+
+        function Test() {
+            var parm = JSON.stringify('123456');
+            var timeStamp = (new Date()).valueOf();
+            var nonce = RandomNumber();
+            var userId = localStorage.getItem("LoginUserId");
+            var token = localStorage.getItem("SignToken");
+
+            $.ajax({
+                type: 'Post',
+                url: url + '/api/Server/Test',
+                headers: {
+                    "timespan": timeStamp,//时间戳
+                    "nonce": nonce,//随机数
+                    "userId": userId,//用户Id
+                    "token": token,//token
+                    "signature": GetSignature(timeStamp, nonce, userId, token, parm)//签名参数
+                },
+                data: parm,
+                contentType: 'application/json',
+                dataType: 'json',
+                success: function (data) {
+                    console.log("success");
+                    console.log(data);
+                    var result = JSON.stringify(data, null, 4);
+                    $("#show_json").html("<pre>" + result + "</pre>");
+                },
+                error: function (data) {
+                    console.log("error");
+                    console.log(data);
+                }
+            });
+        }
+
+        function RandomNumber() {
+            var num = "";
+            for (var i = 0; i < 6; i++) {
+                num += Math.floor(Math.random() * 10);
+            }
+            return num;
+        }
+        function GetSignature(timeStamp, nonce, userId, token, data) {
+            var signStr = timeStamp + nonce + userId + token + SignatureAuthentication(JSON.parse(data));
+            return md5(signStr).toUpperCase();
+        }
+        function compareFunction(a, b) {
+            return a.localeCompare(b, 'zh');
+        }
+        function SignatureAuthentication(obj) {
+            //debugger;
+            var str = JSON.stringify(obj).toString().toUpperCase();
+            //字母数字和汉字
+            var re1 = /[\d\w]/g;
+            var re2 = /[\u4e00-\u9fa5]/g;
+            var data1 = "";
+            var data2 = "";
+            if (str.match(re1) != null) {
+                data1 = str.match(re1).sort().join('');
+            }
+            if (str.match(re2) != null) {
+                data2 = str.match(re2).sort(compareFunction).join('');
+            }
+            console.log(data1 + data2);
+            return data1 + data2;
+
+        }
+
+        function WordPreview() {
+            //文档在 Internet 上必须是可公开访问的
+            let url = encodeURIComponent('http://cssmobanobs.obs.cn-east-3.myhuaweicloud.com/d_res/20229562.docx');
+            let officeUrl = 'https://view.officeapps.live.com/op/view.aspx?src=' + url;
+            openPopup(officeUrl);
+        }
+
+        function ExcelPreview() {
+            //文档在 Internet 上必须是可公开访问的
+            let url = encodeURIComponent('http://cssmobanobs.obs.cn-east-3.myhuaweicloud.com/d_res/20191394.xlsx');
+            let officeUrl = 'https://view.officeapps.live.com/op/view.aspx?src=' + url;
+            // 在新窗口打开编码后 的链接
+            openPopup(officeUrl);
+        }
+
+        function PPTPreview() {
+            //文档在 Internet 上必须是可公开访问的
+            let url = encodeURIComponent('http://cssmobanobs.obs.cn-east-3.myhuaweicloud.com/d_res/20221744.pptx');
+            let officeUrl = 'https://view.officeapps.live.com/op/view.aspx?src=' + url;
+            // 在新窗口打开编码后 的链接
+            openPopup(officeUrl);
+        }
+
+        function openPopup(officeUrl) {
+            // 创建包含 iframe 和关闭按钮的 div 元素
+            var popupContainer = document.createElement('div');
+            popupContainer.className = 'popup-container';
+
+            var popupInner = document.createElement('div');
+            popupInner.style.width = "80%";
+            popupInner.style.height = "80%";
+            var iframe = document.createElement('iframe');
+            iframe.setAttribute('src', officeUrl); // 将此处地址替换为您需要显示的网页的地址
+            iframe.setAttribute('width', '100%');
+            iframe.setAttribute('height', '100%');
+            iframe.setAttribute('frameborder', '0');
+
+            var closeButton = document.createElement('button');
+            closeButton.innerHTML = '关闭';
+            closeButton.addEventListener('click', closePopup);
+
+            popupInner.appendChild(iframe);
+            popupInner.appendChild(closeButton);
+
+            popupContainer.appendChild(popupInner);
+
+            // 添加弹窗到页面主体中
+            document.body.appendChild(popupContainer);
+        }
+
+        function closePopup() {
+            // 删除弹窗元素
+            var popupContainer = document.querySelector('.popup-container');
+            popupContainer.parentNode.removeChild(popupContainer);
+        }
+
+    </script>
+</head>
+<body>
+    <div style="height:50px"></div>
+    <div class="container-lg">
+        <div class="row clearfix">
+            <div class="col-md-6 column">
+                <button onclick="LogOut()">退出登录</button>
+            </div>
+            <div class="col-md-6 column">
+                <button onclick="LogInfo()">查看日志</button>
+            </div>
+        </div>
+        <br />
+        <div class="row clearfix mt-3 border">
+            <div class="col-md-8 column">
+                <span>Action: </span> <br />
+                <input type="text" id="Action" value="/api/Server/QueryDate" /> <br />
+                <span>Data: </span> <br />
+                <textarea id="Data" style="height: 100px; width: 800px; overflow-x: scroll; border: solid #000;"></textarea>
+                <br />
+                <button onclick="QueryDate()">请求</button>
+                <br />
+                <div>
+                    <span>返回数据：</span>
+                    <div id="show_json" style="height: 500px; width: 800px; overflow-x: scroll; border: solid #000;"></div>
+                </div>
+            </div>
+            <div class="col-md-4 column">
+                <div class="row clearfix" style="background-color: #9b6ff1">
+                    <button type="button" onclick="Test()">测试</button>
+                </div>
+                <br />
+                <div class="row clearfix border">
+                    <div class="col-md-9 column">
+                        Action:<input type="text" id="Action2" value="/api/Server/ExportExcel" /><br />
+                        Data: <input type="text" id="Data2" value='{"selectA2":[{"IdA":"11","IdB":"1100"}]}' />
+                    </div>
+                    <div class="col-md-3">
+                        <button onclick="ExportExcel()">导出</button>
+                    </div>
+                </div>
+                <br />
+                <div class="row clearfix border">
+                    <div class="col-md-12 column">
+                        <input type="file" id="ImportExcel" />
+                        <button type="button" onclick="ImportExcel()">导入</button>
+                    </div>
+                </div>
+                <br />
+                <div class="row clearfix">
+                    <div class="col-md-12 column">
+                        二维码内容：<input type="text" id="QRcode" />
+                        <button type="button" onclick="QRcode()">生成二维码</button>
+                        <br />
+                        <img id="QRcodeimg" />
+                    </div>
+                </div>
+                <br />
+                <div class="row clearfix">
+                    <button type="button" onclick="VerificationCode()">生成验证码</button>
+                    <br />
+                    <div><img id="Code"></div>
+                </div>
+                <br />
+                <div class="row clearfix border">
+                    <button type="button" onclick="WordPreview()">word文件在线预览</button>
+                </div>
+                <br />
+                <div class="row clearfix border">
+                    <button type="button" onclick="ExcelPreview()">Excel文件在线预览</button>
+                </div>
+                <br />
+                <div class="row clearfix border">
+                    <button type="button" onclick="PPTPreview()">PPT文件在线预览</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

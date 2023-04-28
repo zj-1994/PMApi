@@ -1,0 +1,165 @@
+﻿@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/4.3.1/css/bootstrap.min.css">
+    <script src="https://cdn.staticfile.org/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://cdn.staticfile.org/popper.js/1.15.0/umd/popper.min.js"></script>
+    <script src="https://cdn.staticfile.org/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <style>
+        .interval-right {
+            padding-right: 20px;
+        }
+
+        .interval-top {
+            padding-top: 20px;
+        }
+    </style>
+
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="form-inline interval-top">
+            <div class="form-group interval-right">
+                <label for="email">电子邮件:</label>
+                <input type="email" class="form-control" id="email" placeholder="输入email">
+            </div>
+            <div class="form-group interval-right">
+                <label for="pwd">输入密码:</label>
+                <input type="password" class="form-control" id="pwd" placeholder="输入密码">
+            </div>
+            <div class="form-group interval-right">
+                <button type="submit" class="btn btn-primary">搜索</button>
+            </div>
+        </div>
+        <div class="interval-top" id="myTable"></div>
+        <div id="page"></div>
+    </div>
+    <script>
+        var count = 0
+        $(function () {
+            setpage(1, 10);
+        });
+
+        function setpage(pageindex, pagesize) {
+            var parm = JSON.stringify('[{"pageindex":"' + pageindex + '","pagesize":"' + pagesize + '"}]');
+            console.log(parm)
+            $.ajax({
+                type: 'Post',
+                url:  '/api/Server/LogInfo',
+                data: parm,
+                contentType: 'application/json',
+                dataType: 'json',
+                success: function (data) {
+                    console.log("success");
+                    console.log(data);
+                    GenerateTable(data.data);
+                    count = data.count;
+                    Generatepage(pageindex, pagesize)
+                },
+                error: function (data) {
+                    console.log("error");
+                    console.log(data);
+                }
+            });
+
+
+        }
+
+        function GenerateTable(data) {
+            $('#myTable').html("");
+            var table = $('<table>').addClass('table table-hover table-bordered table-striped'); // 创建一个 table 元素，并添加 CSS 类名
+
+            // 创建表头
+            var thead = $('<thead class="thead-light">');
+            var tr = $('<tr>');
+            $.each(data[0], function (key, value) {
+                $('<th>').text(key).appendTo(tr); // 将表头单元格添加到行中
+            });
+            thead.append(tr); // 将行添加到表头中
+            table.append(thead); // 将表头添加到表格中
+
+            // 创建数据行
+            var tbody = $('<tbody>');
+            $.each(data, function (index, obj) {
+                var tr = $('<tr>');
+                $.each(obj, function (key, value) {
+                    $('<td>').text(value).appendTo(tr); // 将数据单元格添加到行中
+                });
+                tbody.append(tr); // 将行添加到表体中
+            });
+            table.append(tbody); // 将表体添加到表格中
+
+            $('#myTable').append(table); // 将表格添加到指定的容器中
+        }
+        function Generatepage(page, page_size) {
+            $('#page').html("");
+            //总数
+            var info_num = count;
+            var total = 0;
+            //单页条数
+            var size = page_size;
+            //总页数
+            if (info_num / size > parseInt(info_num / size)) {
+                total = parseInt(info_num / size) + 1;
+            } else {
+                total = parseInt(info_num / size);
+            }
+            //第N页
+            var thispage = page;
+            var first_row = (thispage - 1) * size + 1;
+            var last_row = thispage * size;
+            last_row = (last_row > info_num) ? info_num : last_row;
+            var p_num = "";
+            //条数
+            p_num += "<label>第" + thispage + "页/共" + total + "页，" + "总共" + info_num + "条记录</label>";
+            p_num += "<ul class='pagination'>";
+            //首页 上一页：
+            if (thispage > 1) {
+                p_num += '<li class="page-item"><a class="page-link" onclick=setpage(' + (1) + ',' + page_size + ')>首页</a></li>';
+                p_num += '<li class="page-item"><a class="page-link" onclick=setpage(' + (thispage - 1) + ',' + page_size + ')>上一页</a></li>';
+            } else {
+                p_num += '<li class="page-item"><a class="page-link">首页</a></li>';
+                p_num += '<li class="page-item"><a class="page-link">上一页</a></li>';
+            }
+            //生成数字显示：默认显示1 2 3 4 5 6
+            var tt = 6;
+            if (tt > total) {
+                tt = total;
+            }
+            var te = 1;
+            var d = thispage;
+            if (d >= 6) {
+                te = d;
+                //当前页是否超显示数：
+                for (var i = te; i <= (d + tt); i++) {
+                    //在总页数范围内。若超出，则不显示。
+                    if (i <= total) {
+                        p_num += '<li class="page - item"><a class="page-link" onclick=setpage(' + (i) + ',' + page_size + ')>' + i + '</a></li>';
+                    }
+                }
+            } else {
+                for (var i = 1; i <= tt; i++) {
+                    p_num += '<li class="page - item"><a class="page-link" onclick=setpage(' + (i) + ',' + page_size + ')>' + i + '</a></li>';
+                }
+            }
+            //尾页 下一页
+            if (thispage < total) {
+                p_num += '<li class="page-item"><a class="page-link" onclick=setpage(' + (thispage + 1) + ',' + page_size + ')>下一页</a></li>';
+                p_num += '<li class="page-item"><a class="page-link" onclick=setpage(' + (total) + ',' + page_size + ')>尾页</a></li>';
+            } else {
+                p_num += '<li class="page-item"><a class="page-link">下一页</a></li>';
+                p_num += '<li class="page-item"><a class="page-link">尾页</a></li>';
+            }
+            p_num += '</ul>';
+            $('#page').append(p_num);
+        }
+    </script>
+</body>
+</html>
